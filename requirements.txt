@@ -1,0 +1,5 @@
+Flask
+beautifulsoup4
+requests
+newspaper3k
+lxml_html_clean

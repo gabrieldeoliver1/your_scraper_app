@@ -1,0 +1,213 @@
+{% extends '_base.html' %}
+
+{% block content %}
+    <h1>Scraper de Notícias Inteligente</h1>
+
+    {# Mensagem de Feedback Global #}
+    <div id="feedbackMessage" style="display: none; padding: 10px; margin-bottom: 20px; border-radius: 5px; background-color: #e6ffe6; border: 1px solid green; text-align: center; font-weight: bold;"></div>
+
+    <div class="form-section">
+        <h2>Adicionar Novo Site para Varredura</h2>
+        <form id="addSiteForm" action="{{ url_for('add_site_route') }}" method="POST">
+            <div class="form-group">
+                <label for="url">URL do Site:</label>
+                <input type="text" id="url" name="url" placeholder="Ex: https://www.exemplo.com.br" required>
+            </div>
+            <button type="submit" class="button">Adicionar Site</button>
+        </form>
+
+        <h3 style="margin-top: 30px;">Importar/Exportar Sites</h3>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+            <form id="importSitesForm" method="POST" enctype="multipart/form-data" style="flex-grow: 1;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="import_sites_file">Importar de TXT:</label>
+                    <input type="file" id="import_sites_file" name="file" accept=".txt">
+                </div>
+                <button type="submit" class="button" style="margin-top: 10px;">Importar Sites</button>
+            </form>
+            <button id="exportSitesButton" class="button" style="margin-top: 10px;">Exportar Sites</button>
+        </div>
+    </div>
+
+    {# --- Seção de Sites Cadastrados Colapsável --- #}
+    <div class="collapsible-section">
+        <button type="button" id="toggleSites" class="button collapsible-toggle">Mostrar Sites Cadastrados</button>
+        <div id="sitesContainer" class="collapsible-content">
+            <div class="sites-list">
+                {# Ocultar o título "Sites Cadastrados" (mantido via CSS, mas não mais necessário estruturalmente) #}
+                <h2 style="display: none;">Sites Cadastrados</h2> 
+                {% if sites %}
+                    {% for site in sites %}
+                        <div class="site-item">
+                            <div class="site-info">
+                                {# Ocultar o ID do site #}
+                                <p style="display: none;"><strong>ID:</strong> {{ site.id }}</p> 
+                                <p><strong>URL:</strong> <a href="{{ site.url }}" target="_blank" rel="noopener noreferrer">{{ site.url }}</a></p>
+                            </div>
+                            <div class="site-actions">
+                                <form action="{{ url_for('delete_site_route', site_id=site.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja deletar este site?');">
+                                    <button type="submit" class="button delete">Deletar</button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="text-align: center;">Nenhum site cadastrado ainda. Adicione um site acima ou importe um arquivo.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <hr>
+
+
+    <div class="form-section">
+        <h2>Gerenciar Termos de Pesquisa</h2>
+        <form id="addTermForm" action="{{ url_for('add_term_route') }}" method="POST">
+            <div class="form-group">
+                <label for="term">Novo Termo:</label>
+                <input type="text" id="term" name="term" placeholder="Ex: Arsal, Camilla Ferraz" required>
+            </div>
+            <button type="submit" class="button">Adicionar Termo</button>
+        </form>
+
+        <h3 style="margin-top: 30px;">Importar/Exportar Termos</h3>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+            <form id="importTermsForm" method="POST" enctype="multipart/form-data" style="flex-grow: 1;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="import_terms_file">Importar de TXT:</label>
+                    <input type="file" id="import_terms_file" name="file" accept=".txt">
+                </div>
+                <button type="submit" class="button" style="margin-top: 10px;">Importar Termos</button>
+            </form>
+            <button id="exportTermsButton" class="button" style="margin-top: 10px;">Exportar Termos</button>
+        </div>
+
+        {# --- Seção de Termos Atuais Colapsável --- #}
+        <div class="collapsible-section" style="margin-top: 20px;"> 
+            <button type="button" id="toggleTerms" class="button collapsible-toggle">Mostrar Termos Atuais</button>
+            <div id="termsContainer" class="collapsible-content">
+                <div class="sites-list" style="margin-top: 0;"> 
+                    <h3 style="display: none;">Termos Atuais:</h3> 
+                    {% if search_terms %}
+                        {% for term in search_terms %}
+                            <div class="site-item">
+                                <div class="site-info">
+                                    <p style="display: none;"><strong>ID:</strong> {{ term.id }}</p> 
+                                    <p><strong>Termo:</strong> {{ term.term }}</p>
+                                </div>
+                                <div class="site-actions">
+                                    <form action="{{ url_for('delete_term_route', term_id=term.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja deletar este termo?');">
+                                        <button type="submit" class="button delete">Deletar</button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="text-align: center;">Nenhum termo de pesquisa cadastrado ainda. Adicione um termo acima ou importe um arquivo.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="search-section">
+        <h2>Controlar e Pesquisar Notícias</h2>
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+            <button id="startButton" class="button">Iniciar Varredura</button>
+            <button id="stopButton" class="button delete">PARAR Varredura</button>
+            <p id="scraperStatus" style="align-self: center; font-weight: bold; margin-left: 10px;">Status: <span id="currentStatus">Verificando...</span></p>
+        </div>
+        {# Barra de Progresso #}
+        <div id="progressBarContainer" style="width: 100%; background-color: #e0e0e0; border-radius: 5px; height: 20px; margin-bottom: 20px; overflow: hidden; display: none;">
+            <div id="progressBar" style="width: 0%; background-color: #28a745; height: 100%; text-align: center; color: white; line-height: 20px;">0%</div>
+        </div>
+
+
+        <form id="searchForm" class="search-filter-bar" action="{{ url_for('search_articles_route') }}" method="GET">
+            <div class="form-group">
+                <label for="site_filter">Filtrar por Site:</label>
+                <select id="site_filter" name="site_id">
+                    <option value="0">Todos os Sites</option>
+                    {% for site in sites %}
+                        <option value="{{ site.id }}" {% if selected_site_id is defined and selected_site_id == site.id %}selected{% endif %}>
+                            {{ site.url }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="order_by">Ordenar por:</label>
+                <select id="order_by" name="order_by">
+                    <option value="date_desc" {% if order_by is defined and order_by == 'date_desc' %}selected{% endif %}>Mais Recentes</option>
+                    <option value="date_asc" {% if order_by is defined and order_by == 'date_asc' %}selected{% endif %}>Mais Antigas</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="start_date">Data Inicial:</label>
+                <input type="date" id="start_date" name="start_date" value="{{ start_date | default('') }}">
+            </div>
+            <div class="form-group">
+                <label for="end_date">Data Final:</label>
+                <input type="date" id="end_date" name="end_date" value="{{ end_date | default('') }}">
+            </div>
+            
+            {# NEW: Per page selector #}
+            <div class="form-group">
+                <label for="per_page">Itens por página:</label>
+                <select id="per_page" name="per_page">
+                    <option value="5" {% if per_page is defined and per_page == 5 %}selected{% endif %}>5</option>
+                    <option value="10" {% if per_page is defined and per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="20" {% if per_page is defined and per_page == 20 %}selected{% endif %}>20</option>
+                    <option value="50" {% if per_page is defined and per_page == 50 %}selected{% endif %}>50</option>
+                </select>
+            </div>
+
+            <button type="submit" class="button">Exibir Notícias Encontradas</button>
+        </form>
+    </div>
+
+    <div class="search-results">
+        <h2>Resultados da Pesquisa ({{ total_results }} encontrados)</h2> {# Display total results #}
+        <div id="articles_container">
+            {% if articles %}
+                {% for article in articles %}
+                    <div class="article-item">
+                        <div class="article-info">
+                            <h3><a href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a></h3>
+                            <p><strong>Site:</strong> <a href="{{ article.site_url }}" target="_blank">{{ article.site_url }}</a></p>
+                            <p><strong>Publicado:</strong> {{ datetime.fromisoformat(article.published_date).strftime('%d/%m/%Y %H:%M') if article.published_date else 'Data Indisponível' }}</p>
+                            <p class="article-content-snippet">{{ article.content | truncate(300, True) }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="text-align: center;">Nenhum resultado para a sua pesquisa e filtros.</p>
+            {% endif %}
+        </div>
+
+        {# NEW: Pagination Controls #}
+        {% if total_pages > 1 %}
+        <div class="pagination-controls" style="text-align: center; margin-top: 20px;">
+            {% if current_page > 1 %}
+            <a href="{{ url_for('search_articles_route', site_id=selected_site_id, order_by=order_by, start_date=start_date, end_date=end_date, page=current_page - 1, per_page=per_page) }}" class="button pagination-button">Anterior</a>
+            {% endif %}
+
+            {% for p in range(1, total_pages + 1) %}
+                {% if p == current_page %}
+                <span class="button pagination-button current-page">{{ p }}</span>
+                {% else %}
+                <a href="{{ url_for('search_articles_route', site_id=selected_site_id, order_by=order_by, start_date=start_date, end_date=end_date, page=p, per_page=per_page) }}" class="button pagination-button">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if current_page < total_pages %}
+            <a href="{{ url_for('search_articles_route', site_id=selected_site_id, order_by=order_by, start_date=start_date, end_date=end_date, page=current_page + 1, per_page=per_page) }}" class="button pagination-button">Próximo</a>
+            {% endif %}
+            <p style="margin-top: 10px;">Página {{ current_page }} de {{ total_pages }}</p>
+        </div>
+        {% endif %}
+
+    </div>
+{% endblock %}
